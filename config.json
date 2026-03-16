@@ -1,23 +1,22 @@
 {
-    "resolucao": [1920, 1080],
-    "ciclos": 1,
-    "focus": {
-        "duracao": 100,
-        "titulo": "FOCUS",
-        "cor_fundo": "#FFC2C2",
-        "icone": "assets/icons/school (1).png"
-    },
-    "break": {
-        "duracao": 100,
-        "titulo": "BREAK",
-        "cor_fundo": "#FFE6E6",
-        "icone": "assets/icons/coffee-cup (1).png"
-    },
-    "fontes": {
-        "bold": "assets/fonts/Nunito-Bold.ttf",
-        "regular": "assets/fonts/Nunito-Regular.ttf"
-    },
-    "audio": {
-        "transicao": "assets/audios/toqueSuave.mp3"
-    }
+  "resolucao": [1920,1080],
+
+  "focus": {
+    "titulo": "FOCUS",
+    "icone": "assets/icons/school (1).png"
+  },
+
+  "break": {
+    "titulo": "BREAK",
+    "icone": "assets/icons/coffee-cup (1).png"
+  },
+
+  "fontes": {
+    "bold": "assets/fonts/Nunito-Bold.ttf",
+    "regular": "assets/fonts/Nunito-Regular.ttf"
+  },
+
+  "audio": {
+    "transicao": "assets/audios/toqueSuave.mp3"
+  }
 }

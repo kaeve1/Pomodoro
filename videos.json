@@ -1,0 +1,33 @@
+{
+  "_comentario_noise": "Opções: white, pink = rumors, brown = melhor, blue, violet, grey = vento + mar, green = rain",
+
+  "videos": [
+    {
+      "nome": "pomodoro_4h_50_10",
+      "focus": 3000,
+      "break": 600,
+      "focus_color": "#FFC2C2",
+      "break_color": "#FFE6E6",
+      "ciclos": 4,
+      "noise": "pink"
+    },
+    {
+      "nome": "pomodoro_4h_25_5",
+      "focus": 1500,
+      "break": 300,
+      "focus_color": "#2C3C20",
+      "break_color": "#C5D0A9",
+      "ciclos": 8,
+      "noise": "green"
+    },
+    {
+      "nome": "pomodoro_2h_60_10",
+      "focus": 3600,
+      "break": 600,
+      "focus_color": "#6A452C",
+      "break_color": "#F0C095",
+      "ciclos": 2,
+      "noise": "brown"
+    }
+  ]
+}
