@@ -12,7 +12,9 @@ mensagens = [
 
 mensagem_sorteada = random.choice(mensagens)
 
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+BASE_DIR   = os.path.dirname(os.path.dirname(__file__))
+OUTPUT_DIR = r"E:\PomodojoFrames"  # ← HD secundário
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 with open(os.path.join(BASE_DIR, "config.json")) as f:
     config = json.load(f)
@@ -26,16 +28,13 @@ def hex_to_rgb(hex):
     hex = hex.lstrip("#")
     return tuple(int(hex[i:i+2], 16) for i in (0, 2, 4))
 
-COR_FUNDO      = hex_to_rgb(focus_color)   # fundo da intro = cor do Focus
-COR_ELEM       = hex_to_rgb(break_color)   # elementos da intro = cor do Break
+COR_FUNDO   = hex_to_rgb(focus_color)
+COR_ELEM    = hex_to_rgb(break_color)
 COR_INATIVO = tuple(min(255, c + 30) for c in COR_FUNDO)
 
-FONT_BOLD = os.path.join(BASE_DIR, config["fontes"]["bold"])
+FONT_BOLD   = os.path.join(BASE_DIR, config["fontes"]["bold"])
 font_titulo = ImageFont.truetype(FONT_BOLD, 80)
 font_numero = ImageFont.truetype(FONT_BOLD, 380)
-
-OUTPUT_DIR = os.path.join(BASE_DIR, "output")
-os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 FPS     = 30
 DURACAO = 10
@@ -63,7 +62,7 @@ def desenhar_arco(draw, cx, cy, raio, progresso, cor, largura=26):
         draw.arc(bbox, start=-90, end=angulo_fim, fill=cor, width=largura)
 
 def gerar_frame_intro(segundo, frame_no_segundo):
-    img = Image.new("RGB", (W, H), color=COR_FUNDO)
+    img  = Image.new("RGB", (W, H), color=COR_FUNDO)
     draw = ImageDraw.Draw(img)
 
     progresso = frame_no_segundo / FPS
@@ -82,7 +81,7 @@ def gerar_frame_intro(segundo, frame_no_segundo):
     return img
 
 def gerar_frame_mensagem():
-    img = Image.new("RGB", (W, H), color=COR_FUNDO)
+    img  = Image.new("RGB", (W, H), color=COR_FUNDO)
     draw = ImageDraw.Draw(img)
 
     desenhar_circulo_pontilhado(draw, CX, CY, RAIO, COR_INATIVO)

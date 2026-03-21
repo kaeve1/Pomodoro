@@ -4,8 +4,8 @@ import json
 from PIL import Image
 import numpy as np
 
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-OUTPUT_DIR = os.path.join(BASE_DIR, "output")
+BASE_DIR   = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+OUTPUT_DIR = r"E:\PomodojoFrames"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 with open(os.path.join(BASE_DIR, "config.json")) as f:
@@ -16,29 +16,21 @@ W, H = config["resolucao"]
 focus_color = os.environ.get("FOCUS_COLOR", "#FFC2C2")
 break_color = os.environ.get("BREAK_COLOR", "#FFE6E6")
 
-def hex_to_rgb(hex):
-    hex = hex.lstrip("#")
-    return tuple(int(hex[i:i+2], 16) for i in (0, 2, 4))
+def hex_to_rgb(hex_str):
+    hex_str = hex_str.lstrip("#")
+    return tuple(int(hex_str[i:i+2], 16) for i in (0, 2, 4))
 
 COR_FUNDO = hex_to_rgb(focus_color)
 COR_ELEM  = hex_to_rgb(break_color)
 
 def branquear_e_recolorizar(img, cor):
-    """Força todos os pixels visíveis pra branco puro, depois aplica a cor"""
-    data = np.array(img)
-
-    # pega o canal alpha
+    data  = np.array(img)
     alpha = data[:, :, 3]
-
-    # força todos os pixels com alpha > 0 pra branco puro
-    data[:, :, 0] = np.where(alpha > 30, 255, 0)  # R
-    data[:, :, 1] = np.where(alpha > 30, 255, 0)  # G
-    data[:, :, 2] = np.where(alpha > 30, 255, 0)  # B
-    data[:, :, 3] = np.where(alpha > 30, 255, 0)  # A — binário, sem meios tons
-
+    data[:, :, 0] = np.where(alpha > 30, 255, 0)
+    data[:, :, 1] = np.where(alpha > 30, 255, 0)
+    data[:, :, 2] = np.where(alpha > 30, 255, 0)
+    data[:, :, 3] = np.where(alpha > 30, 255, 0)
     img_branca = Image.fromarray(data)
-
-    # agora aplica a cor desejada
     r, g, b, a = img_branca.split()
     r = r.point(lambda p: int(p * cor[0] / 255))
     g = g.point(lambda p: int(p * cor[1] / 255))
@@ -56,8 +48,12 @@ def gerar_frame_outro():
 
 print("Gerando frames do outro...")
 
-frame = gerar_frame_outro()
-for i in range(20):
-    frame.save(os.path.join(OUTPUT_DIR, f"outro_{str(i).zfill(3)}.png"))
+DURACAO_SEGUNDOS = 20
+FPS              = 30
+TOTAL_FRAMES     = DURACAO_SEGUNDOS * FPS  # 600 frames = 20 segundos a 30fps
 
-print("✅ Outro gerado — 20 frames")
+frame = gerar_frame_outro()  # gera uma vez e reutiliza
+for i in range(TOTAL_FRAMES):
+    frame.save(os.path.join(OUTPUT_DIR, f"outro_{str(i).zfill(4)}.png"))
+
+print(f"✅ Outro gerado — {TOTAL_FRAMES} frames ({DURACAO_SEGUNDOS}s a {FPS}fps)")

@@ -3,174 +3,196 @@ from PIL import Image, ImageDraw, ImageFont
 import json
 import math
 import os
+from multiprocessing import Pool, Value
+import ctypes
 
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-OUTPUT_DIR = os.path.join(BASE_DIR, "output")
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+BASE_DIR   = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+OUTPUT_DIR = r"E:\PomodojoFrames"
 
-with open(os.path.join(BASE_DIR, "config.json")) as f:
-    config = json.load(f)
+FPS            = 30
+THREADS        = 13
+QUALIDADE_JPEG = 95
 
-W, H = config["resolucao"]
+def hex_to_rgb(hex_str):
+    hex_str = hex_str.lstrip("#")
+    return tuple(int(hex_str[i:i+2], 16) for i in (0, 2, 4))
 
-FONT_BOLD = os.path.join(BASE_DIR, config["fontes"]["bold"])
-FONT_REGULAR = os.path.join(BASE_DIR, config["fontes"]["regular"])
+# contador compartilhado entre workers
+contador_global = None
 
-duracao_focus = int(os.environ["FOCUS_DURATION"])
-duracao_break = int(os.environ["BREAK_DURATION"])
-ciclos = int(os.environ["CYCLES"])
+def init_counter(c):
+    global contador_global
+    contador_global = c
 
-def hex_to_rgb(hex):
-    hex = hex.lstrip("#")
-    return tuple(int(hex[i:i+2], 16) for i in (0, 2, 4))
+def gerar_e_salvar(args):
+    """Worker — tudo passado por argumento, sem depender de globais"""
+    (contador, prog_focus, prog_break, fase, timer_focus, timer_break,
+     base_dir, cor_focus, cor_break, cor_focus_elem, cor_break_elem,
+     cor_inativo, duracao_break_val, output_dir) = args
 
-COR_FOCUS      = hex_to_rgb(os.environ["FOCUS_COLOR"])
-COR_BREAK      = hex_to_rgb(os.environ["BREAK_COLOR"])
-COR_FOCUS_ELEM = COR_BREAK
-COR_BREAK_ELEM = COR_FOCUS
-COR_INATIVO = tuple((a + b) // 2 for a, b in zip(COR_FOCUS, COR_BREAK))
+    from PIL import Image, ImageDraw, ImageFont
+    import math, os, json
 
-font_titulo = ImageFont.truetype(FONT_BOLD, size=80)
-font_timer  = ImageFont.truetype(FONT_BOLD, size=200)
+    with open(os.path.join(base_dir, "config.json")) as f:
+        config = json.load(f)
 
-def recolorizar_icone(icone, cor):
-    """Recoloriza ícone branco com a cor desejada"""
-    r, g, b, a = icone.split()
-    r = r.point(lambda p: int(p * cor[0] / 255))
-    g = g.point(lambda p: int(p * cor[1] / 255))
-    b = b.point(lambda p: int(p * cor[2] / 255))
-    return Image.merge("RGBA", (r, g, b, a))
+    W2, H2    = config["resolucao"]
+    FONT_BOLD = os.path.join(base_dir, config["fontes"]["bold"])
 
-# carrega e recoloriza com a cor do lado oposto
-_icone_focus_raw = Image.open(os.path.join(BASE_DIR, config["focus"]["icone"])).convert("RGBA").resize((220, 220), Image.Resampling.LANCZOS)
-_icone_break_raw = Image.open(os.path.join(BASE_DIR, config["break"]["icone"])).convert("RGBA").resize((220, 220), Image.Resampling.LANCZOS)
+    font_titulo = ImageFont.truetype(FONT_BOLD, size=80)
+    font_timer  = ImageFont.truetype(FONT_BOLD, size=200)
 
-icone_focus = recolorizar_icone(_icone_focus_raw, COR_FOCUS_ELEM)
-icone_break = recolorizar_icone(_icone_break_raw, COR_BREAK_ELEM)
+    def recolorizar(icone, cor):
+        r, g, b, a = icone.split()
+        r = r.point(lambda p: int(p * cor[0] / 255))
+        g = g.point(lambda p: int(p * cor[1] / 255))
+        b = b.point(lambda p: int(p * cor[2] / 255))
+        return Image.merge("RGBA", (r, g, b, a))
 
-def formatar_tempo(segundos):
-    m = segundos // 60
-    s = segundos % 60
-    return f"{m:02d}:{s:02d}"
+    _if = Image.open(os.path.join(base_dir, config["focus"]["icone"])).convert("RGBA").resize((220, 220), Image.Resampling.LANCZOS)
+    _ib = Image.open(os.path.join(base_dir, config["break"]["icone"])).convert("RGBA").resize((220, 220), Image.Resampling.LANCZOS)
+    icone_focus_w = recolorizar(_if, cor_focus_elem)
+    icone_break_w = recolorizar(_ib, cor_break_elem)
 
-def centralizar_texto(draw, texto, font, area_x, area_largura, y, cor=(255, 255, 255)):
-    bbox = draw.textbbox((0, 0), texto, font=font)
-    tw = bbox[2] - bbox[0]
-    x = area_x + (area_largura - tw) / 2
-    draw.text((x, y), texto, font=font, fill=cor)
-
-def desenhar_circulo_progresso(draw, cx, cy, raio, progresso, cor_ativo, cor_inativo):
-    bbox = [cx - raio, cy - raio, cx + raio, cy + raio]
-
-    for i in range(0, 360, 3):
-        ang = math.radians(i)
-        x1 = cx + (raio - 13) * math.cos(ang)
-        y1 = cy + (raio - 13) * math.sin(ang)
-        draw.ellipse([x1-3, y1-3, x1+3, y1+3], fill=cor_inativo)
-
-    angulo_inicio = -90
-    angulo_fim = -90 + (360 * progresso)
-    if angulo_fim > angulo_inicio:
-        draw.arc(bbox, start=angulo_inicio, end=angulo_fim, fill=cor_ativo, width=26)
-
-def desenhar_icone(img, icone, cx, cy, ativo=True, offset_x=0, offset_y=0):
-    iw, ih = icone.size
-    x = cx - iw // 2 + offset_x
-    y = cy - ih // 2 + offset_y
-
-    if not ativo:
-        icone_copia = icone.copy()
-        r, g, b, a = icone_copia.split()
-        a = a.point(lambda p: p * 0.4)
-        icone_copia = Image.merge("RGBA", (r, g, b, a))
-        img.paste(icone_copia, (x, y), icone_copia)
-    else:
-        img.paste(icone, (x, y), icone)
-
-def gerar_frame(frame_focus, frame_break, fase, duracao_focus, duracao_break):
-    img = Image.new("RGB", (W, H), color=(255, 255, 255))
+    img  = Image.new("RGB", (W2, H2), color=(255, 255, 255))
     draw = ImageDraw.Draw(img)
 
-    cor_fundo_focus  = COR_FOCUS
-    cor_fundo_break  = COR_BREAK
-    cor_elem_ativo   = COR_FOCUS_ELEM if fase == "focus" else COR_BREAK_ELEM
-    cor_elem_inativo = COR_INATIVO
+    cor_elem_ativo   = cor_focus_elem if fase == "focus" else cor_break_elem
+    cor_elem_inativo = cor_inativo
 
-    draw.rectangle([0,    0, W//2, H], fill=cor_fundo_focus)
-    draw.rectangle([W//2, 0, W,   H], fill=cor_fundo_break)
+    draw.rectangle([0,      0, W2//2, H2], fill=cor_focus)
+    draw.rectangle([W2//2,  0, W2,   H2], fill=cor_break)
 
-    cx_focus = W // 4
-    cy_focus = H // 2
-    raio = 250
+    def centralizar(texto, font, area_x, area_w, y, cor):
+        bbox = draw.textbbox((0, 0), texto, font=font)
+        x = area_x + (area_w - (bbox[2] - bbox[0])) / 2
+        draw.text((x, y), texto, font=font, fill=cor)
 
-    cor_arco_focus = cor_elem_ativo   if fase == "focus" else cor_elem_inativo
-    cor_txt_focus  = COR_FOCUS_ELEM if fase == "focus" else COR_INATIVO
+    def circulo(cx, cy, raio, prog, cor_a, cor_i):
+        bbox = [cx-raio, cy-raio, cx+raio, cy+raio]
+        for i in range(0, 360, 3):
+            ang = math.radians(i)
+            x1  = cx + (raio-13) * math.cos(ang)
+            y1  = cy + (raio-13) * math.sin(ang)
+            draw.ellipse([x1-3, y1-3, x1+3, y1+3], fill=cor_i)
+        af = -90 + (360 * prog)
+        if af > -90:
+            draw.arc(bbox, start=-90, end=af, fill=cor_a, width=26)
 
-    prog_focus = max(frame_focus / duracao_focus, 0.01)
-
-    centralizar_texto(draw, "FOCUS", font_titulo, 0, W//2, 60, cor=cor_txt_focus)
-    desenhar_circulo_progresso(draw, cx_focus, cy_focus, raio, prog_focus, cor_arco_focus, cor_elem_inativo)
-    desenhar_icone(img, icone_focus, cx_focus, cy_focus, ativo=(fase == "focus"))
-    centralizar_texto(draw, formatar_tempo(frame_focus), font_timer, 0, W//2, H - 280, cor=cor_txt_focus)
-
-    cx_break = W - W // 4
-    cy_break = H // 2
-
-    cor_arco_break = cor_elem_ativo   if fase == "break" else cor_elem_inativo
-    cor_txt_break  = COR_BREAK_ELEM if fase == "break" else COR_INATIVO
-
-    prog_break = 0
-    if duracao_break > 0:
-        prog_break = max(frame_break / duracao_break, 0.01)
-
-    centralizar_texto(draw, "BREAK", font_titulo, W//2, W//2, 60, cor=cor_txt_break)
-    desenhar_circulo_progresso(draw, cx_break, cy_break, raio, prog_break, cor_arco_break, cor_elem_inativo)
-    desenhar_icone(img, icone_break, cx_break, cy_break, ativo=(fase == "break"), offset_x=18, offset_y=-18)
-    centralizar_texto(draw, formatar_tempo(frame_break), font_timer, W//2, W//2, H - 280, cor=cor_txt_break)
-
-    return img
-
-def gerar_frames_transicao(fase_atual, contador):
-    print(f"  ⏸️ Gerando transição...")
-
-    for i in range(3):
-        progresso = (i + 1) / 3
-
-        if fase_atual == "focus":
-            tempo_focus = int(duracao_focus * progresso)
-            img = gerar_frame(tempo_focus, duracao_break, "focus", duracao_focus, duracao_break)
+    def desenhar_icone(ic, cx, cy, ativo, ox=0, oy=0):
+        iw, ih = ic.size
+        x, y = cx - iw//2 + ox, cy - ih//2 + oy
+        if not ativo:
+            ic2 = ic.copy()
+            r, g, b, a = ic2.split()
+            a = a.point(lambda p: int(p * 0.4))
+            ic2 = Image.merge("RGBA", (r, g, b, a))
+            img.paste(ic2, (x, y), ic2)
         else:
-            tempo_break = int(duracao_break * progresso)
-            img = gerar_frame(duracao_focus, tempo_break, "break", duracao_focus, duracao_break)
+            img.paste(ic, (x, y), ic)
 
-        img.save(os.path.join(OUTPUT_DIR, f"frame_{str(contador).zfill(5)}.png"))
-        contador += 1
+    def fmt(s):
+        return f"{s//60:02d}:{s%60:02d}"
 
-    return contador
+    raio     = 250
+    cx_focus = W2 // 4
+    cy_focus = H2 // 2
+    cx_break = W2 - W2 // 4
+    cy_break = H2 // 2
 
-contador = 0
+    cor_arco_f = cor_elem_ativo   if fase == "focus" else cor_elem_inativo
+    cor_txt_f  = cor_focus_elem   if fase == "focus" else cor_inativo
+    cor_arco_b = cor_elem_ativo   if fase == "break" else cor_elem_inativo
+    cor_txt_b  = cor_break_elem   if fase == "break" else cor_inativo
 
-for ciclo in range(ciclos):
+    centralizar("FOCUS", font_titulo, 0,      W2//2, 60,       cor_txt_f)
+    circulo(cx_focus, cy_focus, raio, max(prog_focus, 0.01), cor_arco_f, cor_elem_inativo)
+    desenhar_icone(icone_focus_w, cx_focus, cy_focus, fase=="focus")
+    centralizar(fmt(timer_focus), font_timer, 0, W2//2, H2-280, cor_txt_f)
 
-    print(f"\n🔴 Ciclo {ciclo + 1}/{ciclos} — FOCUS")
-    for frame in range(duracao_focus, 0, -1):
-        img = gerar_frame(frame, duracao_break, "focus", duracao_focus, duracao_break)
-        img.save(os.path.join(OUTPUT_DIR, f"frame_{str(contador).zfill(5)}.png"))
-        contador += 1
-        if frame % 100 == 0:
-            print(f"  Focus {formatar_tempo(frame)}")
+    prog_b = max(prog_break, 0.01) if duracao_break_val > 0 else 0
+    centralizar("BREAK", font_titulo, W2//2, W2//2, 60,       cor_txt_b)
+    circulo(cx_break, cy_break, raio, prog_b, cor_arco_b, cor_elem_inativo)
+    desenhar_icone(icone_break_w, cx_break, cy_break, fase=="break", ox=18, oy=-18)
+    centralizar(fmt(timer_break), font_timer, W2//2, W2//2, H2-280, cor_txt_b)
 
-    if duracao_break > 0 and ciclo < ciclos - 1:  # ← só muda aqui
-        contador = gerar_frames_transicao("focus", contador)
+    caminho = os.path.join(output_dir, f"frame_{str(contador).zfill(6)}.jpg")
+    img.save(caminho, "JPEG", quality=95)
 
-        print(f"🟢 Ciclo {ciclo + 1}/{ciclos} — BREAK")
-        for frame in range(duracao_break, 0, -1):
-            img = gerar_frame(duracao_focus, frame, "break", duracao_focus, duracao_break)
-            img.save(os.path.join(OUTPUT_DIR, f"frame_{str(contador).zfill(5)}.png"))
-            contador += 1
-            if frame % 100 == 0:
-                print(f"  Break {formatar_tempo(frame)}")
+    # progresso a cada 1000 frames
+    with contador_global.get_lock():
+        contador_global.value += 1
+        if contador_global.value % 1000 == 0:
+            print(f"  ⚡ {contador_global.value} frames gerados...")
 
-        contador = gerar_frames_transicao("break", contador)
 
-print(f"\n✅ {contador} frames gerados!")
+if __name__ == "__main__":
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+    # lê config
+    with open(os.path.join(BASE_DIR, "config.json")) as f:
+        config = json.load(f)
+
+    # lê variáveis de ambiente
+    duracao_focus = int(os.environ["FOCUS_DURATION"])
+    duracao_break = int(os.environ["BREAK_DURATION"])
+    ciclos        = int(os.environ["CYCLES"])
+
+    # calcula cores
+    cor_focus      = hex_to_rgb(os.environ["FOCUS_COLOR"])
+    cor_break      = hex_to_rgb(os.environ["BREAK_COLOR"])
+    cor_focus_elem = cor_break
+    cor_break_elem = cor_focus
+    cor_inativo    = tuple((a + b) // 2 for a, b in zip(cor_focus, cor_break))
+
+    # argumentos fixos passados pra cada worker
+    args_fixos = (
+        BASE_DIR, cor_focus, cor_break,
+        cor_focus_elem, cor_break_elem,
+        cor_inativo, duracao_break, OUTPUT_DIR
+    )
+
+    # ─── MONTA TAREFAS ────────────────────────────────────
+    tarefas  = []
+    contador = 0
+
+    for ciclo in range(ciclos):
+
+        # focus
+        for segundo in range(duracao_focus, 0, -1):
+            for sf in range(FPS):
+                prog = (segundo - sf / FPS) / duracao_focus
+                tarefas.append((contador, prog, 1.0, "focus", segundo, duracao_break) + args_fixos)
+                contador += 1
+
+        if duracao_break > 0 and ciclo < ciclos - 1:
+
+            # transição focus→break
+            for i in range(3 * FPS):
+                p  = (i + 1) / (3 * FPS)
+                tf = int(duracao_focus * p)
+                tarefas.append((contador, p, 1.0, "focus", tf, duracao_break) + args_fixos)
+                contador += 1
+
+            # break
+            for segundo in range(duracao_break, 0, -1):
+                for sf in range(FPS):
+                    prog = (segundo - sf / FPS) / duracao_break
+                    tarefas.append((contador, 1.0, prog, "break", duracao_focus, segundo) + args_fixos)
+                    contador += 1
+
+            # transição break→focus
+            for i in range(3 * FPS):
+                p  = (i + 1) / (3 * FPS)
+                tb = int(duracao_break * p)
+                tarefas.append((contador, 1.0, p, "break", duracao_focus, tb) + args_fixos)
+                contador += 1
+
+    print(f"📋 Total de frames: {len(tarefas)}")
+    print(f"⚡ Usando {THREADS} threads...")
+
+    c = Value(ctypes.c_int, 0)
+    with Pool(THREADS, initializer=init_counter, initargs=(c,)) as pool:
+        pool.map(gerar_e_salvar, tarefas)
+
+    print(f"\n✅ {contador} frames gerados em {OUTPUT_DIR}")
