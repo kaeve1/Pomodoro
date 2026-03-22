@@ -62,6 +62,7 @@ python generateVideos.py
 ```
 
 Saída: `output/videos/{nome}.mp4`
+ATENÇÃO: dependendo da sua configuração de hardwares os vídeos podem demorar para serem criados.
 
 ## Configuração
 
