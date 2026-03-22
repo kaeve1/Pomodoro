@@ -31,8 +31,8 @@ def gerar_noise(duracao, tipo="pink"):
     from scipy.signal import butter, lfilter
 
     volumes = {
-        "white":  -32, "pink":   -26, "brown":  -5,
-        "blue":   -45, "violet": -40, "grey":   -50, "green":  -28,
+        "white":  -25, "pink":   -26, "brown":  10,
+        "blue":   -25, "violet": -40, "grey":   -10, "green":  -28,
     }
     volume = volumes.get(tipo, -30)
 
