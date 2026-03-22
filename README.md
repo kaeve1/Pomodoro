@@ -71,6 +71,14 @@ Saída: `output/videos/{nome}.mp4`
 
 ## Visual
 visite o meu canal no youtube que usa esta tecnologia -> https://www.youtube.com/@Pomo_Dojo
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/a73d4829-e053-4670-acb7-65d0049ecd0b" />
+
+<img width="1918" height="1071" alt="image" src="https://github.com/user-attachments/assets/a08df6ae-3549-4348-820d-ebf626e398e7" />
+
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/6943367b-a0d8-4354-9e46-b2f9a5683bdd" />
+
+
+
 
 
 
