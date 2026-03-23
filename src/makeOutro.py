@@ -1,8 +1,7 @@
-# makeOutro.py
 import os
 import json
-from PIL import Image
 import numpy as np
+from PIL import Image
 
 BASE_DIR   = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUTPUT_DIR = r"E:\PomodojoFrames"
@@ -37,7 +36,7 @@ def branquear_e_recolorizar(img, cor):
     b = b.point(lambda p: int(p * cor[2] / 255))
     return Image.merge("RGBA", (r, g, b, a))
 
-overlay_path = os.path.join(BASE_DIR, "assets", "pomodojo_outro_transparente.png")
+overlay_path = os.path.join(BASE_DIR, "assets", "pomodojo_outro_transparent.png")
 overlay_raw  = Image.open(overlay_path).convert("RGBA").resize((W, H), Image.Resampling.LANCZOS)
 overlay      = branquear_e_recolorizar(overlay_raw, COR_ELEM)
 

@@ -1,4 +1,4 @@
-# makeAudio.py
+
 import os
 import json
 from pydub import AudioSegment
@@ -31,7 +31,7 @@ def gerar_noise(duracao, tipo="pink"):
     from scipy.signal import butter, lfilter
 
     volumes = {
-        "white":  -25, "pink":   -26, "brown":  10,
+        "white":  -25, "pink":   -9, "brown":  10,
         "blue":   -25, "violet": -40, "grey":   -10, "green":  -28,
     }
     volume = volumes.get(tipo, -30)

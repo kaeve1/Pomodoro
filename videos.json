@@ -16,13 +16,31 @@
   
   "videos": [
     {
-      "nome": "pomodoro_2h_25_5_pink",
-      "focus": 1500,
-      "break": 300,
-      "focus_color": "#FFC2C2",
-      "break_color": "#FFE6E6",
+      "nome": "pomodoro_4h_50_10_red",
+      "focus": 3000,
+      "break": 600,
+      "focus_color": "#C0392B",
+      "break_color": "#F5B7B1",
       "ciclos": 4,
-      "noise": "pink"
+      "noise": "brown"
+    },
+    {
+      "nome": "pomodoro_4h_50_10_blue",
+      "focus": 3000,
+      "break": 600,
+      "focus_color": "#1A3A5C",
+      "break_color": "#AED6F1",
+      "ciclos": 4,
+      "noise": "blue"
+    },
+    {
+      "nome": "pomodoro_4h_50_10_grey",
+      "focus": 3000,
+      "break": 600,
+      "focus_color": "#2C2C2C",
+      "break_color": "#D5D5D5",
+      "ciclos": 4,
+      "noise": "grey"
     }
   ]
 }
