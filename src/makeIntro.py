@@ -1,4 +1,4 @@
-# makeIntro.py
+
 import os
 import json
 import math

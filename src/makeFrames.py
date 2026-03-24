@@ -1,4 +1,4 @@
-# makeFrames.py
+
 from PIL import Image, ImageDraw, ImageFont
 import json
 import math
