@@ -144,7 +144,7 @@ for c in range(ciclos):
         total += duracao_break
         total += FRAMES_TRANSICAO_DURACAO   # transição visual break→focus
 total += duracao_transicao  # toqueSuave do último focus
-total += 20                 # outro
+total += duracao_break                 # outro
 
 total_ms = int(total * 1000) + 5000
 timeline  = AudioSegment.silent(duration=total_ms)

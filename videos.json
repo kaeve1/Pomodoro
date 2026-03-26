@@ -1,7 +1,7 @@
 {
+  "ative_o_venv_no_seu_terminal": "venv/scripts/activate",
   "nome_deve_terEsseFormato": "pomodoro_{DURACAO}h_{FOCUS}_{BREAK}_{NOISE} | Ex: pomodoro_4h_50_10_pink",
   "_comentario_noise": "Opções: white, pink, brown, blue, violet, grey, green",
-
   "como_deve_ser_videos": [
     {
       "nome": "pomodoro_2h_25_5_pink",
@@ -13,34 +13,32 @@
       "noise": "pink"
     }
   ],
-  
   "videos": [
-    {
-      "nome": "pomodoro_4h_50_10_red",
+    {"nome": "pomodoro_3h_50_10_deep_work",
       "focus": 3000,
       "break": 600,
-      "focus_color": "#C0392B",
-      "break_color": "#F5B7B1",
-      "ciclos": 4,
+      "focus_color": "#1B2631",
+      "break_color": "#AEB6BF",
+      "ciclos": 3,
       "noise": "brown"
     },
     {
-      "nome": "pomodoro_4h_50_10_blue",
-      "focus": 3000,
-      "break": 600,
-      "focus_color": "#1A3A5C",
-      "break_color": "#AED6F1",
-      "ciclos": 4,
-      "noise": "blue"
+      "nome": "pomodoro_5h_25_5_long_grind",
+      "focus": 1500,
+      "break": 300,
+      "ciclos": 10,
+      "focus_color": "#212F3D",
+      "break_color": "#D5DBDB",
+      "noise": "grey"
     },
     {
-      "nome": "pomodoro_4h_50_10_grey",
-      "focus": 3000,
-      "break": 600,
-      "focus_color": "#2C2C2C",
-      "break_color": "#D5D5D5",
+      "nome": "pomodoro_2h_30_5_fast_pace",
+      "focus": 1800,
+      "break": 300,
       "ciclos": 4,
-      "noise": "grey"
+      "focus_color": "#4A235A",
+      "break_color": "#D2B4DE",
+      "noise": "violet"
     }
   ]
 }

@@ -1,4 +1,4 @@
-# makeVideo.py
+
 import os
 import json
 import subprocess

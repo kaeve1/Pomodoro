@@ -47,7 +47,7 @@ def gerar_frame_outro():
 
 print("Gerando frames do outro...")
 
-DURACAO_SEGUNDOS = os.environ.get("BREAK_DURATION")
+DURACAO_SEGUNDOS = int(os.environ.get("BREAK_DURATION") or 0)
 FPS              = 30
 TOTAL_FRAMES     = DURACAO_SEGUNDOS * FPS  # 600 frames = 20 segundos a 30fps
 
