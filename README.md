@@ -1,160 +1,116 @@
-## Visão Geral
+# pomoDojo
 
-O pomoDojo gera vídeos de estudo completos de forma programática — sem edição de vídeo. Defina suas sessões em um arquivo JSON, execute um comando, receba um MP4 pronto para upload.
+Gerador programático de vídeos de estudo no estilo Pomodoro. O projeto produz vídeos completos, com imagem e som, sem nenhuma edição manual: você descreve as sessões em um arquivo JSON, roda um comando, e recebe um MP4 pronto para publicar. Cada frame e cada trecho de áudio são gerados por código, do countdown inicial ao ruído ambiente de fundo.
 
-## Stack
+Este documento explica o que o projeto faz, como o pipeline funciona por dentro e como executá-lo, para que qualquer pessoa entenda cada etapa antes de rodar.
 
-- **Python** — geração de frames, síntese de áudio, orquestração do pipeline
-- **Pillow** — renderização visual (frames, fontes, ícones)
-- **NumPy / SciPy** — geração e filtragem de ruído ambiente
-- **pydub** — montagem e efeitos de áudio
-- **FFmpeg** — codificação do vídeo final
+## O que ele faz
 
-## Como Funciona
+Vídeos de Pomodoro para estudo, aqueles com um cronômetro de foco e pausa acompanhado de ruído ambiente, costumam ser feitos manualmente em editores de vídeo, o que é repetitivo e demorado. O pomoDojo elimina esse trabalho: ele desenha o cronômetro quadro a quadro, sintetiza o áudio inteiro em código e monta o vídeo final automaticamente.
+
+Você define quantos vídeos quiser em um JSON, cada um com duração de foco, duração de pausa, número de ciclos, cores e tipo de ruído. O programa percorre a lista e gera cada vídeo do começo ao fim, um após o outro.
+
+## Como o pipeline funciona
+
+O orquestrador é o `generateVideos.py`. Ele lê a lista de vídeos, e para cada um prepara as variáveis, limpa arquivos temporários e executa cinco etapas em sequência, cada uma num script próprio dentro de `src/`. As configurações de cada vídeo são passadas para as etapas através de variáveis de ambiente, o que mantém cada script independente e executável isoladamente.
 
 ```
 videos.json → generateVideos.py
-                ├── makeIntro.py    # countdown animado de 10s (30fps)
-                ├── makeFrames.py   # frames do timer (30fps, multiprocessing)
-                ├── makeAudio.py    # ruído ambiente + tick-tock (gerado em código)
-                ├── makeOutro.py    # tela final de 20s
-                └── makeVideo.py   # montagem FFmpeg → .mp4
+                ├── makeIntro.py   → countdown animado de abertura
+                ├── makeFrames.py  → frames do cronômetro (foco e pausa)
+                ├── makeAudio.py   → ruído ambiente e tick-tock, gerados em código
+                ├── makeOutro.py   → tela final
+                └── makeVideo.py   → montagem final com FFmpeg → .mp4
 ```
 
-Os frames são escritos em um HD secundário para preservar o armazenamento principal. Arquivos temporários são limpos automaticamente após cada vídeo.
+**Intro.** Gera um countdown animado de dez segundos a trinta quadros por segundo. Um arco circular vai se preenchendo a cada segundo enquanto o número decresce, e ao final aparece uma mensagem motivacional sorteada de uma lista. As cores vêm da configuração do vídeo.
 
-## Instalação
+**Frames do cronômetro.** Esta é a etapa mais pesada. Desenha a tela principal, dividida ao meio entre foco e pausa, cada lado com seu título, ícone, círculo de progresso e cronômetro numérico. A cada segundo de vídeo são trinta quadros, então uma sessão longa pode significar dezenas de milhares de imagens. Para dar conta disso em tempo razoável, os quadros são gerados em paralelo com multiprocessing, distribuindo o trabalho entre vários processos e acompanhando o progresso por um contador compartilhado. As transições entre foco e pausa também são animadas.
 
-```bash
-git clone https://github.com/youruser/PomodoroYouTube.git
-cd PomodoroYouTube
-python -m venv venv && venv\Scripts\activate
-pip install pillow pydub numpy scipy moviepy
+**Áudio.** Todo o som é sintetizado, não gravado. O ruído ambiente de fundo é gerado matematicamente através de filtros digitais, e o projeto oferece vários tipos de ruído colorido, cada um com uma característica sonora diferente: branco, rosa, marrom, azul, violeta, cinza e verde. Sobre esse fundo, o script adiciona um tick-tock sintetizado na contagem final de cada fase, com ênfase e eco nos últimos segundos para marcar a virada. Um som de transição suave toca nos momentos de troca entre foco e pausa. Toda a linha do tempo do áudio é montada para casar exatamente com a duração dos quadros.
+
+**Outro.** Gera a tela de encerramento a partir de uma arte sobreposta, recolorida conforme o tema do vídeo.
+
+**Montagem.** A última etapa usa o FFmpeg para transformar cada conjunto de quadros em um clipe de vídeo, concatenar intro, corpo e outro em um único arquivo, e por fim casar esse vídeo com a trilha de áudio gerada. Os arquivos intermediários são sempre limpos ao final, mesmo se ocorrer um erro no meio do caminho.
+
+## Tecnologias
+
+* Python, para geração dos quadros, síntese de áudio e orquestração do pipeline
+* Pillow, para desenhar os quadros, textos, ícones e círculos de progresso
+* NumPy e SciPy, para gerar e filtrar o ruído ambiente
+* pydub, para montar e aplicar efeitos na trilha de áudio
+* FFmpeg, para codificar e montar o vídeo final
+* multiprocessing, da biblioteca padrão, para gerar os quadros em paralelo
+
+## Estrutura de pastas
+
+```
+generateVideos.py     Orquestrador: lê o JSON e roda o pipeline por vídeo
+videos.json           Definição dos vídeos a gerar
+config.json           Resolução, fontes, ícones e som de transição
+src/
+  makeIntro.py        Countdown animado de abertura
+  makeFrames.py       Frames do cronômetro (paralelizado)
+  makeAudio.py        Síntese de ruído e tick-tock
+  makeOutro.py        Tela final
+  makeVideo.py        Montagem final via FFmpeg
+assets/
+  fonts/              Fontes usadas nos textos
+  icons/              Ícones de foco e pausa
+  audios/             Som de transição
 ```
 
-O FFmpeg deve estar instalado e disponível no PATH.
+## Como rodar
 
-## Uso
+Pré-requisitos: Python instalado e FFmpeg disponível no PATH do sistema.
 
-Defina seus vídeos em `videos.json`:
+Clone o repositório e entre na pasta:
+
+```
+git clone https://github.com/kaeve1/Pomodoro.git
+cd Pomodoro
+```
+
+Crie um ambiente virtual e instale as dependências:
+
+```
+python -m venv venv
+venv\Scripts\activate
+pip install pillow pydub numpy scipy
+```
+
+Defina os vídeos que deseja gerar no arquivo `videos.json`, dentro da lista `videos`. Cada item aceita:
 
 ```json
 {
-  "videos": [
-    {
-      "nome": "pomodoro_4h_50_10_pink",
-      "focus": 3000,
-      "break": 600,
-      "focus_color": "#FFC2C2",
-      "break_color": "#FFE6E6",
-      "ciclos": 4,
-      "noise": "pink"
-    }
-  ]
+  "nome": "pomodoro_2h_25_5_pink",
+  "focus": 1500,
+  "break": 300,
+  "focus_color": "#FFC2C2",
+  "break_color": "#FFE6E6",
+  "ciclos": 4,
+  "noise": "pink"
 }
 ```
 
-> **Convenção de nome:** `pomodoro_{duração}h_{focus}_{break}_{noise}`  
-> **Tipos de noise:** `pink` `brown` `green` `white` `grey` `blue`
+O campo `focus` e `break` são durações em segundos, `ciclos` é quantas vezes a sessão se repete, `focus_color` e `break_color` definem o tema visual, e `noise` escolhe o tipo de ruído de fundo entre branco, rosa (`pink`), marrom (`brown`), azul (`blue`), violeta (`violet`), cinza (`grey`) e verde (`green`).
 
-```bash
+Por convenção, o nome do vídeo segue o formato `pomodoro_{duração}h_{foco}_{pausa}_{noise}`.
+
+Rode o gerador:
+
+```
 python generateVideos.py
 ```
 
-Saída: `output/videos/{nome}.mp4`
-ATENÇÃO: dependendo da sua configuração de hardwares os vídeos podem demorar para serem criados.
+Cada vídeo finalizado é salvo em `output/videos/{nome}.mp4`.
 
 ## Configuração
 
-`config.json` — resolução, fontes, ícones, caminho do som de transição.  
-`src/makeFrames.py` — altere `OUTPUT_DIR` para o caminho do seu HD secundário.
+O `config.json` controla a resolução, as fontes, os ícones de foco e pausa e o som de transição.
 
+Um ponto importante para quem for rodar em outra máquina: os scripts foram escritos para gravar os quadros temporários em um drive secundário, no caminho `E:\PomodojoFrames`, para não ocupar o disco principal durante a geração. Esse caminho está definido diretamente no código, em `generateVideos.py`, `makeFrames.py`, `makeIntro.py`, `makeOutro.py` e `makeVideo.py`. Se você não tiver esse drive, ajuste esse caminho nesses arquivos para uma pasta que exista no seu sistema antes de rodar.
 
-## Visual
-visite o meu canal no youtube que usa esta tecnologia -> https://www.youtube.com/@Pomo_Dojo
-<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/a73d4829-e053-4670-acb7-65d0049ecd0b" />
+## Licença
 
-<img width="1918" height="1071" alt="image" src="https://github.com/user-attachments/assets/a08df6ae-3549-4348-820d-ebf626e398e7" />
-
-<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/6943367b-a0d8-4354-9e46-b2f9a5683bdd" />
-
-
-
-
-
-
---------------------------------------------------------------------------------------------
-
-
-## Overview
-
-pomoDojo generates full-length study timer videos programmatically — no video editing required. Define your sessions in a JSON file, run one command, get a production-ready MP4.
-
-## Stack
-
-- **Python** — frame generation, audio synthesis, pipeline orchestration
-- **Pillow** — visual rendering (frames, fonts, icons)
-- **NumPy / SciPy** — ambient noise generation and filtering
-- **pydub** — audio assembly and effects
-- **FFmpeg** — final video encoding
-
-## How It Works
-
-```
-videos.json → generateVideos.py
-                ├── makeIntro.py    # 10s animated countdown (30fps)
-                ├── makeFrames.py   # timer frames (30fps, multiprocessing)
-                ├── makeAudio.py    # ambient noise + tick-tock (pure code)
-                ├── makeOutro.py    # 20s end screen
-                └── makeVideo.py   # FFmpeg assembly → .mp4
-```
-
-Frames are written to a secondary drive to preserve main storage. Temporary files are cleaned automatically after each video.
-
-## Setup
-
-```bash
-git clone https://github.com/youruser/PomodoroYouTube.git
-cd PomodoroYouTube
-python -m venv venv && venv\Scripts\activate
-pip install pillow pydub numpy scipy moviepy
-```
-
-FFmpeg must be installed and available in PATH.
-
-## Usage
-
-Define your videos in `videos.json`:
-
-```json
-{
-  "videos": [
-    {
-      "nome": "pomodoro_4h_50_10_pink",
-      "focus": 3000,
-      "break": 600,
-      "focus_color": "#FFC2C2",
-      "break_color": "#FFE6E6",
-      "ciclos": 4,
-      "noise": "pink"
-    }
-  ]
-}
-```
-
-> **File naming:** `pomodoro_{duration}h_{focus}_{break}_{noise}`  
-> **Noise options:** `pink` `brown` `green` `white` `grey` `blue`
-
-```bash
-python generateVideos.py
-```
-
-Output: `output/videos/{nome}.mp4`
-
-## Configuration
-
-`config.json` — resolution, fonts, icons, transition sound path.  
-`src/makeFrames.py` — set `OUTPUT_DIR` to your secondary drive path.
-
-
-MIT License
+MIT.
